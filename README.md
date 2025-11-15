@@ -34,6 +34,8 @@ TechStack Mentor is a full-stack web application that simulates technical interv
 ### Key Capabilities
 
 - 🤖 **AI-Powered**: Uses OpenAI GPT-4 for dynamic question generation and evaluation
+- 🎤 **Voice Interaction**: Speak your answers using audio recording and get AI responses in speech
+- 🎧 **Text-to-Speech**: AI questions are read aloud using OpenAI TTS with multiple voice options
 - 💬 **Interactive Chat**: Real-time Q&A interface with markdown support
 - 📊 **Smart Evaluation**: Comprehensive scoring with feedback and improvement suggestions
 - 💾 **Session Management**: Redis-based caching maintains interview context
@@ -47,9 +49,19 @@ TechStack Mentor is a full-stack web application that simulates technical interv
 ### Interview Management
 
 - **5 Tech Stacks**: React.js, Node.js, Python, Database (SQL/PostgreSQL), DevOps (Docker, CI/CD)
-- **8 Questions per Interview**: AI generates contextual questions based on your answers
+- **5 Questions per Interview**: AI generates contextual questions based on your answers
 - **Real-time Feedback**: Instant AI responses in a chat-style interface
 - **Session Persistence**: Resume interviews even after page refresh (30-min timeout)
+
+### Voice & Audio Features
+
+- **🎤 Voice Recording**: Record your answers using your microphone with real-time recording indicator
+- **🎧 Speech-to-Text**: Automatic transcription using OpenAI Whisper API
+- **🔊 Text-to-Speech**: AI questions read aloud with OpenAI TTS (6 voice options: alloy, echo, fable, onyx, nova, shimmer)
+- **📁 Audio Management**: Automatic storage and organization of recordings and AI responses
+- **🎵 Audio Playback**: Interactive audio player with seek controls, replay, and progress tracking
+- **✅ Format Support**: Multiple audio formats supported (.mp3, .wav, .webm, .m4a, .ogg)
+- **📏 File Validation**: 10MB file size limit with format verification
 
 ### AI Intelligence
 
@@ -79,8 +91,10 @@ TechStack Mentor is a full-stack web application that simulates technical interv
 | **Redis** | 6+ | Session cache |
 | **SQLAlchemy** | 2.0.36 | ORM for database operations |
 | **LangChain** | 0.3.13 | LLM framework |
-| **OpenAI** | 1.58.1 | GPT-4 API integration |
+| **OpenAI** | 1.58.1 | GPT-4, Whisper, and TTS API |
 | **Pydantic** | 2.10.3 | Data validation |
+| **aiofiles** | 23.2.1 | Async file operations |
+| **pydub** | 0.25.1 | Audio file processing |
 | **uv** | Latest | Ultra-fast package installer |
 
 ### Frontend
@@ -106,6 +120,8 @@ TechStack Mentor is a full-stack web application that simulates technical interv
 - PostgreSQL 14+
 - Redis 6+
 - OpenAI API Key
+- Modern browser with microphone support (Chrome, Firefox, Edge, Safari)
+- Microphone access permission for voice recording features
 
 ### Installation
 
@@ -189,18 +205,35 @@ techstack-mentor/
 │   ├── app/
 │   │   ├── models/                # SQLAlchemy database models
 │   │   ├── routers/               # API endpoints
+│   │   │   ├── interview.py      # Interview & audio endpoints
+│   │   │   ├── results.py        # Results management
+│   │   │   └── suggestions.py    # Learning suggestions
 │   │   ├── schemas/               # Pydantic schemas
 │   │   ├── utils/                 # Utilities
+│   │   │   ├── audio_service.py  # Audio processing (STT/TTS)
+│   │   │   ├── cache_manager.py  # Redis session management
+│   │   │   └── llm_service.py    # LLM integration
 │   │   ├── config.py              # Application settings
 │   │   ├── database.py            # Database connection
 │   │   └── main.py                # FastAPI application
+│   ├── audio_files/               # Audio storage (auto-created)
+│   │   ├── recordings/            # User audio recordings
+│   │   └── responses/             # AI TTS audio files
 │   ├── requirements.txt           # Python dependencies
 │   └── .env.example               # Environment template
 │
 ├── techstack-mentor-frontend/     # React Frontend
 │   ├── src/
 │   │   ├── components/            # UI components
+│   │   │   ├── AudioPlayer.tsx   # Audio playback component
+│   │   │   ├── AudioRecorder.tsx # Voice recording component
+│   │   │   ├── ChatInput.tsx     # Text/Audio input
+│   │   │   └── ChatMessage.tsx   # Message display
 │   │   ├── pages/                 # Main pages
+│   │   │   ├── Home.tsx          # Landing page
+│   │   │   ├── Interview.tsx     # Interview interface
+│   │   │   ├── Results.tsx       # Results dashboard
+│   │   │   └── Suggestions.tsx   # Learning recommendations
 │   │   ├── services/              # API client
 │   │   ├── store/                 # State management
 │   │   ├── types/                 # TypeScript types
@@ -225,17 +258,21 @@ techstack-mentor/
    ↓
 3. AI generates first question using GPT-4
    ↓
-4. User types answer in chat interface
+4. Question is converted to speech (TTS) and played
    ↓
-5. AI generates next contextual question
+5. User can:
+   • Type answer in chat interface, OR
+   • Record audio answer (speech-to-text via Whisper)
    ↓
-6. Repeat for 8 questions
+6. AI generates next contextual question with audio
    ↓
-7. AI evaluates all answers
+7. Repeat for 5 questions
    ↓
-8. Display score, feedback, and suggestions
+8. AI evaluates all answers
    ↓
-9. Save results to database
+9. Display score, feedback, and suggestions
+   ↓
+10. Save results to database
 ```
 
 ### Technical Architecture
@@ -260,6 +297,53 @@ techstack-mentor/
 - **30-min TTL**: Sessions auto-expire after 30 minutes of inactivity
 - **Session Recovery**: Page refresh doesn't lose interview progress
 - **Context Window**: Last 10 messages passed to LLM for context
+
+### Audio Processing Pipeline
+
+```
+┌─────────────────┐
+│ User Recording  │
+│  (WebM/MP3)     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐      ┌──────────────┐
+│  Upload Audio   │─────▶│   Whisper    │
+│   to Backend    │      │  (STT API)   │
+└─────────────────┘      └──────┬───────┘
+                                │
+                                ▼
+                         ┌──────────────┐
+                         │ Transcribed  │
+                         │     Text     │
+                         └──────┬───────┘
+                                │
+                                ▼
+┌─────────────────┐      ┌──────────────┐      ┌──────────────┐
+│  AI Response    │◀─────│   GPT-4 LLM  │◀─────│   Process    │
+│    (Audio)      │      │   Generate   │      │    Answer    │
+└────────┬────────┘      └──────────────┘      └──────────────┘
+         │
+         ▼
+┌─────────────────┐      ┌──────────────┐
+│   OpenAI TTS    │─────▶│  Audio File  │
+│   (MP3 Gen)     │      │   Storage    │
+└─────────────────┘      └──────┬───────┘
+                                │
+                                ▼
+                         ┌──────────────┐
+                         │  Playback    │
+                         │   in UI      │
+                         └──────────────┘
+```
+
+**Audio Features:**
+- **Recording**: Browser MediaRecorder API captures audio in WebM format
+- **Transcription**: OpenAI Whisper converts speech to text with high accuracy
+- **Synthesis**: OpenAI TTS generates natural-sounding speech responses
+- **Storage**: Organized file system with separate directories for recordings/responses
+- **Streaming**: Audio files served via FastAPI static file endpoints
+- **Validation**: File size (10MB max) and format validation on upload
 
 ---
 
@@ -308,6 +392,30 @@ Response: {
 }
 ```
 
+#### Upload Audio Recording
+```http
+POST /api/interview/audio/upload
+Content-Type: multipart/form-data
+
+{
+  "file": <audio file>,
+  "session_id": "uuid"
+}
+
+Response: {
+  "transcription": "User's spoken answer...",
+  "audio_url": "/api/interview/audio/recordings/filename.webm"
+}
+```
+
+#### Get Audio File
+```http
+GET /api/interview/audio/recordings/{filename}
+GET /api/interview/audio/responses/{filename}
+
+Returns: Audio file (MP3/WebM)
+```
+
 ---
 
 ## ⚙️ Configuration
@@ -329,10 +437,18 @@ REDIS_PORT=6379
 
 # Optional Settings
 SESSION_TTL=1800                    # Session timeout (seconds)
-MAX_QUESTIONS_PER_INTERVIEW=8       # Questions per interview
+MAX_QUESTIONS_PER_INTERVIEW=5       # Questions per interview
 BACKEND_PORT=8000
 FRONTEND_URL=http://localhost:5173
 ENVIRONMENT=development
+
+# Audio Settings (Optional)
+AUDIO_RECORDINGS_DIR=audio_files/recordings    # Directory for user recordings
+AUDIO_RESPONSES_DIR=audio_files/responses      # Directory for AI audio responses
+MAX_AUDIO_FILE_SIZE_MB=10                      # Max audio file size in MB
+OPENAI_TTS_MODEL=tts-1                         # TTS model (tts-1 or tts-1-hd)
+OPENAI_TTS_VOICE=alloy                         # Voice (alloy, echo, fable, onyx, nova, shimmer)
+OPENAI_WHISPER_MODEL=whisper-1                 # Whisper model for transcription
 ```
 
 ### Frontend Environment Variables
@@ -349,7 +465,12 @@ VITE_API_BASE_URL=http://localhost:8000
 
 By studying this project, you'll learn:
 - ✅ Building REST APIs with FastAPI
-- ✅ LLM integration with LangChain
+- ✅ LLM integration with LangChain and OpenAI
+- ✅ Speech-to-Text with OpenAI Whisper API
+- ✅ Text-to-Speech with OpenAI TTS API
+- ✅ Audio recording and playback in React
+- ✅ MediaRecorder API and Web Audio
+- ✅ Async file operations with aiofiles
 - ✅ Database design with PostgreSQL
 - ✅ Caching strategies with Redis
 - ✅ React with TypeScript
