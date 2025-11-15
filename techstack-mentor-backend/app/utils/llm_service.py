@@ -23,17 +23,60 @@ class LLMService:
         if num_questions is None:
             num_questions = self.max_questions
 
-        prompt = f"""You are an expert technical interviewer. Generate {num_questions} interview questions for {tech_stack}.
+        prompt = f"""You are an expert technical interviewer creating a {tech_stack} assessment with {num_questions} questions.
 
-Requirements:
-- Questions should range from basic to advanced
-- Cover different aspects of {tech_stack}
-- Be specific and clear
-- Avoid yes/no questions
-- Focus on practical knowledge and problem-solving
+QUESTION GENERATION REQUIREMENTS:
 
-Return ONLY a JSON array of questions, nothing else. Format:
-["question 1", "question 2", ...]
+1. DIFFICULTY DISTRIBUTION:
+   - Beginner (20%): Core concepts, basic syntax, fundamental principles
+   - Intermediate (60%): Practical application, common patterns, best practices
+   - Advanced (20%): Architecture, performance, edge cases, real-world scenarios
+
+2. TOPIC COVERAGE:
+   For {tech_stack}, include questions about:
+   - Fundamentals and core concepts (30%)
+   - Best practices and patterns (25%)
+   - Real-world application and problem-solving (25%)
+   - Performance, optimization, and security (10%)
+   - Advanced features and ecosystem (10%)
+
+3. QUESTION QUALITY:
+   - Must be open-ended (no yes/no questions)
+   - Require explanation and understanding, not just memorization
+   - Test practical knowledge and critical thinking
+   - Include scenario-based questions when relevant
+   - Should allow for follow-up discussion
+   - Must be clear and unambiguous
+
+4. QUESTION TYPES TO INCLUDE:
+   - Conceptual: "Explain how X works..."
+   - Comparative: "What's the difference between X and Y..."
+   - Practical: "How would you implement/solve..."
+   - Architectural: "Design a system that..."
+   - Debugging: "What would cause X problem and how to fix..."
+
+5. AVOID:
+   - Yes/no questions
+   - Trick questions
+   - Overly obscure or theoretical questions
+   - Questions requiring specific version knowledge
+   - Multiple unrelated questions in one
+
+EXAMPLES FOR REFERENCE:
+
+Good: "Explain the virtual DOM in React and how it improves performance"
+Bad: "Does React use a virtual DOM?" (yes/no)
+
+Good: "How would you optimize a slow database query? Walk through your approach"
+Bad: "What is query optimization?" (too broad)
+
+Good: "Describe the differences between var, let, and const, and when to use each"
+Bad: "What are the variable types in JavaScript?" (too basic)
+
+Generate {num_questions} high-quality {tech_stack} interview questions following these guidelines.
+
+Return ONLY a JSON array of question strings, no explanations:
+["question 1", "question 2", "question 3", ...]
 """
 
         response = self.llm.invoke(prompt)
@@ -79,29 +122,76 @@ Return ONLY the question text, nothing else."""
             for i, qa in enumerate(qa_pairs)
         ])
 
-        prompt = f"""You are an expert technical interviewer evaluating a {tech_stack} mock interview.
+        prompt = f"""You are an expert technical interviewer evaluating a {tech_stack} mock interview with {len(qa_pairs)} questions.
 
-Interview Transcript:
+INTERVIEW TRANSCRIPT:
 {qa_text}
 
-Provide a comprehensive evaluation in the following JSON format:
+EVALUATION INSTRUCTIONS:
+
+1. VALIDATION CHECK:
+   - Verify each answer contains actual content (not just "Audio response" or empty)
+   - If any answers appear incomplete, note this in feedback
+   - Only evaluate based on actual provided responses
+
+2. SCORING RUBRIC (0-10 scale):
+
+   9-10 (Expert): Deep technical understanding, correct use of best practices, handles edge cases,
+                  provides real-world examples, demonstrates senior-level knowledge
+
+   7-8 (Strong): Solid fundamentals, good technical accuracy, understands core concepts,
+                 minor gaps in advanced topics or best practices
+
+   5-6 (Intermediate): Basic understanding, some correct answers, missing depth or detail,
+                       gaps in best practices or architecture knowledge
+
+   3-4 (Beginner): Superficial knowledge, significant gaps, incorrect concepts,
+                   lacks practical application understanding
+
+   0-2 (Insufficient): Major misunderstandings, mostly incorrect, incomplete responses,
+                       fundamental concept confusion
+
+3. EVALUATION CRITERIA (Per Answer):
+
+   For EACH question, assess:
+   - Technical Accuracy (0-3 points): Is the answer factually correct?
+   - Depth & Detail (0-3 points): Does it show deep understanding vs surface knowledge?
+   - Practical Application (0-2 points): Real-world usage, examples, scenarios
+   - Best Practices (0-2 points): Follows industry standards, security, performance
+
+4. TECH STACK SPECIFIC EVALUATION:
+
+   For {tech_stack}, specifically check:
+   - Core concepts and fundamentals understanding
+   - Common patterns and anti-patterns knowledge
+   - Performance and optimization awareness
+   - Security best practices
+   - Real-world application experience
+   - Ecosystem and tooling familiarity
+
+5. FEEDBACK REQUIREMENTS:
+   - Be specific with examples from their answers
+   - Point out what was good AND what needs improvement
+   - Provide actionable next steps
+   - Mention specific resources or topics to study
+   - Be encouraging but honest
+
+6. MISSED TOPICS:
+   - List specific {tech_stack} topics that should have been covered but weren't
+   - Include fundamentals, intermediate, and advanced topics
+   - Be specific (e.g., "React Hooks lifecycle" not just "React")
+
+Provide your evaluation in EXACT JSON format:
 {{
-    "score": <number between 0-10>,
-    "feedback": "<detailed feedback paragraph>",
-    "missed_topics": ["topic1", "topic2", ...],
-    "improvement_areas": "<specific areas to improve>",
-    "strengths": ["strength1", "strength2", ...],
-    "correct_count": <estimated number of correct/good answers>
+    "score": <number 0-10 with one decimal, e.g., 7.5>,
+    "feedback": "<3-5 sentence detailed, specific feedback with examples>",
+    "missed_topics": ["specific topic 1", "specific topic 2", ...],
+    "improvement_areas": "<specific actionable advice on what to study/practice>",
+    "strengths": ["specific strength 1", "specific strength 2", ...],
+    "correct_count": <number of questions answered well (0-{len(qa_pairs)})>
 }}
 
-Evaluation criteria:
-- Technical accuracy
-- Depth of understanding
-- Practical knowledge
-- Problem-solving approach
-- Communication clarity
-
-Return ONLY valid JSON, nothing else."""
+IMPORTANT: Return ONLY valid JSON, no markdown, no explanations, just the JSON object."""
 
         response = self.llm.invoke(prompt)
 

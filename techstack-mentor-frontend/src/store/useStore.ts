@@ -15,6 +15,14 @@ interface AppState {
   clearMessages: () => void;
   setLoading: (loading: boolean) => void;
 
+  // Audio
+  isRecording: boolean;
+  isProcessingAudio: boolean;
+  audioError: string | null;
+  setIsRecording: (isRecording: boolean) => void;
+  setIsProcessingAudio: (isProcessing: boolean) => void;
+  setAudioError: (error: string | null) => void;
+
   // Results
   results: Result[];
   currentResult: Result | null;
@@ -49,6 +57,14 @@ export const useStore = create<AppState>((set) => ({
     })),
   clearMessages: () => set({ messages: [] }),
   setLoading: (loading) => set({ isLoading: loading }),
+
+  // Audio
+  isRecording: false,
+  isProcessingAudio: false,
+  audioError: null,
+  setIsRecording: (isRecording) => set({ isRecording }),
+  setIsProcessingAudio: (isProcessing) => set({ isProcessingAudio: isProcessing }),
+  setAudioError: (error) => set({ audioError: error }),
 
   // Results
   results: [],

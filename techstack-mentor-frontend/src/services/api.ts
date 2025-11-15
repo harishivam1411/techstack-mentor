@@ -46,6 +46,34 @@ export const interviewApi = {
   },
 };
 
+// Audio endpoints
+export const audioApi = {
+  uploadAudio: async (sessionId: string, audioBlob: Blob): Promise<any> => {
+    const formData = new FormData();
+    formData.append('audio_file', audioBlob, 'recording.webm');
+
+    const response = await axios.post(
+      `${API_BASE_URL}/api/interview/audio/upload?session_id=${sessionId}`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  },
+
+  getAudioUrl: (audioPath: string): string => {
+    // If it's already a full URL, return it
+    if (audioPath.startsWith('http')) {
+      return audioPath;
+    }
+    // If it's a relative path, prepend the base URL
+    return `${API_BASE_URL}${audioPath}`;
+  },
+};
+
 // Results endpoints
 export const resultsApi = {
   getUserResults: async (userId: string, limit: number = 10): Promise<{ results: Result[]; total: number }> => {
