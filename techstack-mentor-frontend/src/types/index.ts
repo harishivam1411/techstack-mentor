@@ -3,6 +3,8 @@ export interface Message {
   role: 'user' | 'ai';
   content: string;
   timestamp: Date;
+  audioUrl?: string;
+  transcribedText?: string; // For user messages that were recorded
 }
 
 export interface InterviewSession {
@@ -50,6 +52,7 @@ export interface StartInterviewResponse {
   session_id: string;
   message: string;
   tech_stack: string;
+  audio_url?: string;
 }
 
 export interface SendMessageRequest {
@@ -62,6 +65,8 @@ export interface SendMessageResponse {
   is_complete: boolean;
   question_number?: number;
   total_questions?: number;
+  audio_url?: string;
+  transcribed_text?: string;
 }
 
 export interface EndInterviewResponse {

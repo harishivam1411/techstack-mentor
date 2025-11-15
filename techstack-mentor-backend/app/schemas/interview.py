@@ -21,6 +21,7 @@ class StartInterviewResponse(BaseModel):
     session_id: str
     message: str
     tech_stack: str
+    audio_url: Optional[str] = None
 
 
 class SendMessageRequest(BaseModel):
