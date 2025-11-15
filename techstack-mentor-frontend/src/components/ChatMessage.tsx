@@ -3,6 +3,8 @@ import ReactMarkdown from 'react-markdown';
 import { Bot, User } from 'lucide-react';
 import type { Message } from '../types';
 import { format } from 'date-fns';
+import AudioPlayer from './AudioPlayer';
+import { audioApi } from '../services/api';
 
 interface ChatMessageProps {
   message: Message;
@@ -27,9 +29,30 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           }`}
         >
           {isAI ? (
-            <ReactMarkdown className="prose prose-sm max-w-none">{message.content}</ReactMarkdown>
+            <div className="space-y-3">
+              {/* Audio player for AI messages - AUDIO ONLY MODE */}
+              {message.audioUrl ? (
+                <div>
+                  <AudioPlayer
+                    audioUrl={audioApi.getAudioUrl(message.audioUrl)}
+                    autoPlay={true}
+                    showReplay={true}
+                  />
+                  {/* Hidden text for accessibility */}
+                  <p className="sr-only">{message.content}</p>
+                </div>
+              ) : (
+                /* Fallback to text if no audio (completion message, etc.) */
+                <div className="text-sm">
+                  <ReactMarkdown className="prose prose-sm max-w-none">{message.content}</ReactMarkdown>
+                </div>
+              )}
+            </div>
           ) : (
-            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+            /* User message - just show generic "Audio response sent" */
+            <div className="text-sm">
+              <p>🎤 Audio response sent</p>
+            </div>
           )}
         </div>
         <span className="text-xs text-gray-400 mt-1">

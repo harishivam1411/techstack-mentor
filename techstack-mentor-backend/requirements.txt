@@ -31,6 +31,8 @@ passlib[bcrypt]==1.7.4
 # Utilities
 httpx==0.28.1
 aioredis==2.0.1
+aiofiles==23.2.1
+pydub==0.25.1
 
 # Development Tools
 black==24.10.0

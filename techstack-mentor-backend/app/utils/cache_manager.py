@@ -24,6 +24,8 @@ class CacheManager:
             "tech_stack": tech_stack,
             "questions": [],
             "answers": [],
+            "audio_urls": [],  # Store pre-generated audio URLs for questions
+            "transcription_status": [],  # Track which answers are transcribed [True/False]
             "current_index": 0,
             "is_complete": False
         }
@@ -72,6 +74,24 @@ class CacheManager:
         session["current_index"] += 1
         return self.set_session(session_id, session)
 
+    def add_answer_no_increment(self, session_id: str, answer: str) -> bool:
+        """Add an answer to the session without incrementing index (for background tasks)"""
+        session = self.get_session(session_id)
+        if not session:
+            return False
+
+        session["answers"].append(answer)
+        return self.set_session(session_id, session)
+
+    def increment_index(self, session_id: str) -> bool:
+        """Increment the current question index"""
+        session = self.get_session(session_id)
+        if not session:
+            return False
+
+        session["current_index"] += 1
+        return self.set_session(session_id, session)
+
     def get_qa_pairs(self, session_id: str) -> List[Dict[str, str]]:
         """Get all Q&A pairs from the session"""
         session = self.get_session(session_id)
@@ -117,6 +137,102 @@ class CacheManager:
         if not session:
             return 0
         return len(session.get("questions", []))
+
+    def set_audio_urls(self, session_id: str, audio_urls: List[str]) -> bool:
+        """Set all pre-generated audio URLs for questions"""
+        session = self.get_session(session_id)
+        if not session:
+            return False
+
+        session["audio_urls"] = audio_urls
+        return self.set_session(session_id, session)
+
+    def get_current_audio_url(self, session_id: str) -> Optional[str]:
+        """Get the audio URL for the current question"""
+        session = self.get_session(session_id)
+        if not session:
+            return None
+
+        current_index = session.get("current_index", 0)
+        audio_urls = session.get("audio_urls", [])
+
+        if current_index < len(audio_urls):
+            return audio_urls[current_index]
+        return None
+
+    def get_next_question_data(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Get the next question and its audio URL"""
+        session = self.get_session(session_id)
+        if not session:
+            return None
+
+        current_index = session.get("current_index", 0)
+        questions = session.get("questions", [])
+        audio_urls = session.get("audio_urls", [])
+
+        if current_index < len(questions):
+            return {
+                "question": questions[current_index],
+                "audio_url": audio_urls[current_index] if current_index < len(audio_urls) else None,
+                "question_number": current_index + 1
+            }
+        return None
+
+    def mark_transcription_pending(self, session_id: str) -> bool:
+        """Mark that a new transcription is pending"""
+        session = self.get_session(session_id)
+        if not session:
+            return False
+
+        # Add False to indicate pending transcription
+        if "transcription_status" not in session:
+            session["transcription_status"] = []
+        session["transcription_status"].append(False)
+        return self.set_session(session_id, session)
+
+    def mark_transcription_complete(self, session_id: str, answer_index: int) -> bool:
+        """Mark that a specific answer's transcription is complete"""
+        session = self.get_session(session_id)
+        if not session:
+            return False
+
+        if "transcription_status" not in session:
+            session["transcription_status"] = []
+
+        # Ensure the list is long enough
+        while len(session["transcription_status"]) <= answer_index:
+            session["transcription_status"].append(False)
+
+        session["transcription_status"][answer_index] = True
+        return self.set_session(session_id, session)
+
+    def are_all_transcriptions_complete(self, session_id: str) -> bool:
+        """Check if all transcriptions are complete"""
+        session = self.get_session(session_id)
+        if not session:
+            return False
+
+        answers = session.get("answers", [])
+        transcription_status = session.get("transcription_status", [])
+
+        # All answers should have corresponding transcription status
+        if len(transcription_status) != len(answers):
+            return False
+
+        # All should be True
+        return all(transcription_status)
+
+    def get_transcription_progress(self, session_id: str) -> Dict[str, int]:
+        """Get transcription progress"""
+        session = self.get_session(session_id)
+        if not session:
+            return {"total": 0, "completed": 0}
+
+        transcription_status = session.get("transcription_status", [])
+        return {
+            "total": len(transcription_status),
+            "completed": sum(1 for status in transcription_status if status)
+        }
 
     def ping(self) -> bool:
         """Check if Redis connection is alive"""
